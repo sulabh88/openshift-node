@@ -1,0 +1,6 @@
+---
+# defaults file for node-label
+labels:
+  egress: "true"
+zone_regex: ".*(az[0-9]+).*"  # Regex to extract zone from node name
+default_zone: "az1"  # Default zone if none is found

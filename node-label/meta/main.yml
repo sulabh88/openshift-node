@@ -1,0 +1,3 @@
+galaxy_info:
+  author: Sulabh Modi
+  description:  "Ansible role to label compute nodes in OpenShift clusters with extracted or default zone."

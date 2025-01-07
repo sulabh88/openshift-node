@@ -1,0 +1,49 @@
+- name: Label OpenShift worker and compute nodes with zone information
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Set label for all worker and compute nodes in the OpenShift cluster
+      k8s:
+        kubeconfig: /path/to/your/kubeconfig  # Replace with your actual kubeconfig path
+        api_version: v1
+        kind: Node
+        name: "{{ item.metadata.name }}"
+        labels:
+          test: "true"
+          zone: "{{ lookup('regex', item.metadata.name, '\\-az(\\d)\\-', 'first') | default('az1') }}"
+      loop: "{{ lookup('k8s', 'nodes', kubeconfig='/path/to/your/kubeconfig', kind='Node').items }}"
+      when: "'worker' in item.metadata.labels['node-role.kubernetes.io/worker'] or 'compute' in item.metadata.labels['node-role.kubernetes.io/compute']"
+      register: labeled_nodes
+
+    - name: Print labeled nodes with their zones
+      debug:
+        msg: "Successfully labeled node {{ item.metadata.name }} with test=true and zone={{ lookup('regex', item.metadata.name, '\\-az(\\d)\\-', 'first') | default('az1') }}"
+      loop: "{{ labeled_nodes.results }}"
+      when: labeled_nodes is defined and labeled_nodes.results is defined
+
+
+**********************
+
+---
+- name: Label OpenShift worker and compute nodes with zone information
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Set label for all worker and compute nodes in the OpenShift cluster
+      k8s:
+        kubeconfig: /path/to/your/kubeconfig  # Replace with your actual kubeconfig path
+        api_version: v1
+        kind: Node
+        name: "{{ item.metadata.name }}"
+        labels:
+          test: "true"
+          zone: "{{ lookup('regex', item.metadata.name, '\\-(az1|az2)\\.', 'first') | default('az1') }}"
+      loop: "{{ lookup('k8s', 'nodes', kubeconfig='/path/to/your/kubeconfig', kind='Node').items }}"
+      when: "'worker' in item.metadata.labels['node-role.kubernetes.io/worker'] or 'compute' in item.metadata.labels['node-role.kubernetes.io/compute']"
+      register: labeled_nodes
+
+    - name: Print labeled nodes with their zones
+      debug:
+        msg: "Successfully labeled node {{ item.metadata.name }} with test=true and zone={{ lookup('regex', item.metadata.name, '\\-(az1|az2)\\.', 'first') | default('az1') }}"
+      loop: "{{ labeled_nodes.results }}"
+      when: labeled_nodes is defined and labeled_nodes.results is defined

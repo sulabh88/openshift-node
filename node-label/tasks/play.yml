@@ -1,0 +1,36 @@
+- name: Print Worker Node Names from OpenShift Cluster
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Gather all nodes from the cluster
+      kubernetes.core.k8s_info:
+        kind: Node
+        label_seclectors:
+          - "node-role.kubernetes.io/compute"
+      register: nodes_info
+
+    - name: Filter worker nodes
+      set_fact:
+         worker_nodes: "{{ nodes_info | map(attribute='metadata.name') | list }}"
+         node_zones: "{{ nodes_info.resources | map(attribute='metadata.name') | map('regex_search', '.*-(az[0-9]+).*', '\\1') | map('default', default_zone) | list }}"
+
+
+    - name: Print worker node names
+      debug:
+        var: 
+          - "{{ node_zones }}"
+          - "{{ worker_nodes }}"
+
+    - name: Label each node with test=true
+      kubernetes.core.k8s:
+        kind: Node
+        name: "{{ item }}"
+        kubeconfig: "{{ kubeconfig }}"
+        definition:
+          metadata:
+            labels:
+              zone: "{{ node_zones }}"
+      loop: "{{ worker_nodes }}"
+        
+

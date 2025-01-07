@@ -1,0 +1,48 @@
+---
+# tasks file for node-label
+- name: Iterate over clusters
+  hosts: localhost
+  gather_facts: no
+  vars:
+    kubeconfig: "{{ cluster.kubeconfig }}"
+
+  tasks:
+    - name: Get all compute nodes
+      kubernetes.core.k8s_info:
+        kind: Node
+        kubeconfig: "{{ kubeconfig }}"
+        label_selectors:
+          - "node-role.kubernetes.io/compute"
+      register: compute_nodes
+
+    - name: Extract node names and zones
+      set_fact:
+        node_data: >
+          {{
+            compute_nodes.resources | map(attribute='metadata') | list
+          }}
+        node_names: >
+          {{
+            node_data | map(attribute='name') | list
+          }}
+        node_zones: >
+          {{
+            node_data | map(attribute='name') | map('regex_search', zone_regex, '\\1') | list
+          }}
+        # If no zone is extracted, default to 'az1'
+        node_zones_with_default: >
+          {{
+            node_zones | map('default', default_zone) | list
+          }}
+
+    - name: Apply labels to compute nodes
+      kubernetes.core.k8s:
+        kind: Node
+        name: "{{ item.node_name }}"
+        kubeconfig: "{{ kubeconfig }}"
+        definition:
+          metadata:
+            labels:
+              egress: "{{ labels.egress }}"
+              zone: "{{ item.zone }}"
+      loop: "{{ node_names | zip(node_zones_with_default) | map('zip', ['node_name', 'zone']) | list }}"
